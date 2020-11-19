@@ -11,7 +11,7 @@
     flags = { release = false; };
     package = {
       specVersion = "1.12";
-      identifier = { name = "cardano-addresses"; version = "3.1.0"; };
+      identifier = { name = "cardano-addresses"; version = "3.1.1"; };
       license = "Apache-2.0";
       copyright = "2020 IOHK";
       maintainer = "operations@iohk.io";
@@ -73,8 +73,8 @@
     } // {
     src = (pkgs.lib).mkDefault (pkgs.fetchgit {
       url = "https://github.com/input-output-hk/cardano-addresses";
-      rev = "9c38189c3e0e011a305ddcd1219e50a0731e99ea";
-      sha256 = "1p93g97aacfsgd68bjm1yw0ccp8wmlqfslcv3qm0q6bahsrrhl02";
+      rev = "817896ccf65cbd088eeff963f859ff4f6e8a9825";
+      sha256 = "1qnnn3xb7j72dzh11r7d8dlpk5bwkv6vz7mmnqh8fq4zij44650p";
       });
     postUnpack = "sourceRoot+=/core; echo source root reset to \$sourceRoot";
     }) // { cabal-generator = "hpack"; }
