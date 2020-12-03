@@ -313,7 +313,7 @@ testMigrationAccountingStyle dbName = do
                     readCheckpoint wid
         let migrationMsg = filter isMsgManualMigration logs
         length migrationMsg `shouldBe` 2
-        length (knownAddresses $ getState cp) `shouldBe` 69
+        length (knownAddresses $ getState cp) `shouldBe` 71
   where
     isMsgManualMigration :: DBLog -> Bool
     isMsgManualMigration = \case
