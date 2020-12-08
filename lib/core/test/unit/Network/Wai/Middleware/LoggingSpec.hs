@@ -22,11 +22,13 @@ import Cardano.Wallet.Api.Server
 import Control.Concurrent
     ( threadDelay )
 import Control.Concurrent.Async
-    ( Async, async, cancel, mapConcurrently )
+    ( Async, async, cancel, mapConcurrently, replicateConcurrently_ )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, readMVar )
 import Control.Concurrent.STM.TVar
     ( TVar, newTVarIO, readTVarIO, writeTVar )
+import Control.Exception
+    ( evaluate )
 import Control.Monad
     ( forM_, void, when )
 import Control.Monad.IO.Class
@@ -102,11 +104,15 @@ import Servant.Server
 import Test.Hspec
     ( Spec, after, afterAll, beforeAll, describe, it, shouldBe, shouldContain )
 import Test.QuickCheck
-    ( Arbitrary (..), choose, property, withMaxSuccess )
+    ( Arbitrary (..)
+    , choose
+    , counterexample
+    , noShrinking
+    , property
+    , withMaxSuccess
+    )
 import Test.QuickCheck.Monadic
-    ( monadicIO )
-import Test.Utils.Windows
-    ( pendingOnWindows, whenWindows )
+    ( assert, monadicIO, monitor )
 
 import qualified Data.Aeson as Aeson
 import qualified Data.List as L
@@ -215,28 +221,38 @@ spec = describe "Logging Middleware"
             , (Debug, "LogRequestFinish")
             ]
 
-    it "different request ids" $ \ctx -> property $ \(NumberOfRequests n) ->
-        monadicIO $ liftIO $ do
-            void $ mapConcurrently (const (get ctx "/get")) (replicate n ())
-            entries <- readTVarIO (logs ctx)
+    it "different request ids" $ \ctx -> noShrinking $
+        property $ \(NumberOfRequests n) -> monadicIO $ do
+            entries <- liftIO $ do
+                replicateConcurrently_ n (get ctx "/get")
+                takeLogs ctx
             let getReqId (ApiLog (RequestId rid) _) = rid
             let uniqueReqIds = L.nubBy (\l1 l2 -> getReqId l1 == getReqId l2)
-            pendingOnWindows "Disabled on windows due to race with log flushing"
-            length (uniqueReqIds entries) `shouldBe` n
+            let numUniqueReqIds = length (uniqueReqIds entries)
+            monitor $ counterexample $ unlines $
+                [ "Number of log entries: " ++ show (length entries)
+                , "Number of unique req ids: " ++ show numUniqueReqIds
+                , ""
+                , "All the logs:" ] ++ map show entries
+            assert $ numUniqueReqIds == n
 
-    it "correct time measures" $ \ctx -> property $ \(nReq, ix) ->
-        withMaxSuccess 10 $ monadicIO $ liftIO $ do
-            let (NumberOfRequests n, RandomIndex i) = (nReq, ix)
-            let reqs = mconcat
-                    [ replicate i (get ctx "/get")
-                    , [ get ctx "/long" ]
-                    , replicate (n - i) (get ctx "/get")
-                    ]
-            void $ mapConcurrently id reqs
-            entries <- readTVarIO (logs ctx)
+    it "correct time measures" $ \ctx -> noShrinking $ withMaxSuccess 10 $
+        property $ \(NumberOfRequests n, RandomIndex i) -> monadicIO $ do
+            entries <- liftIO $ do
+                let reqs = mconcat
+                        [ replicate i (get ctx "/get")
+                        , [ get ctx "/long" ]
+                        , replicate (n - i) (get ctx "/get")
+                        ]
+                void $ mapConcurrently id reqs
+                takeLogs ctx
             let index = mapMaybe captureTime entries
-            pendingOnWindows "Disabled on windows due to race with log flushing"
-            length (filter (> (200*ms)) index) `shouldBe` 1
+            let numLongReqs = length $ filter (> (200*ms)) index
+            monitor $ counterexample $ unlines
+                [ "Number of log entries: " ++ show (length entries)
+                , "Number of long requests: " ++ show numLongReqs
+                ]
+            assert $ numLongReqs == 1
   where
     setup :: IO Context
     setup = do
@@ -260,9 +276,6 @@ spec = describe "Logging Middleware"
             , server = handle
             }
 
-    clearLogs :: Context -> IO ()
-    clearLogs = atomically . flip writeTVar [] . logs
-
     tearDown :: Context -> IO ()
     tearDown = cancel . server
 
@@ -272,6 +285,15 @@ data Context = Context
     , port :: Int
     , server :: Async ()
     }
+
+takeLogs :: Context -> IO [ApiLog]
+takeLogs ctx = do
+    entries <- evaluate =<< readTVarIO (logs ctx)
+    clearLogs ctx
+    pure $ reverse entries
+
+clearLogs :: Context -> IO ()
+clearLogs = atomically . flip writeTVar [] . logs
 
 {-------------------------------------------------------------------------------
                                 Test Helpers
@@ -308,9 +330,7 @@ postIlled ctx path body = do
 
 expectLogs :: Context -> [(Severity, String)] -> IO ()
 expectLogs ctx expectations = do
-    whenWindows $ threadDelay 1000000 -- let iohk-monitoring flush the logs
-
-    entries <- reverse <$> readTVarIO (logs ctx)
+    entries <- takeLogs ctx
 
     when (length entries /= length expectations) $
         fail $ "Expected exactly " <> show (length expectations)
