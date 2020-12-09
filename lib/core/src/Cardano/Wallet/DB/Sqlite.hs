@@ -1284,7 +1284,7 @@ mkTxWithdrawals (txid, tx) =
 mkTxMetaEntity
     :: W.WalletId
     -> W.Hash "Tx"
-    -> Maybe W.TxMetadata
+    -> Maybe W.Metadata
     -> W.TxMeta
     -> TxMeta
 mkTxMetaEntity wid txid meta derived = TxMeta
@@ -1296,7 +1296,11 @@ mkTxMetaEntity wid txid meta derived = TxMeta
     , txMetaBlockHeight = getQuantity (derived ^. #blockHeight)
     , txMetaAmount = getQuantity (derived ^. #amount)
     , txMetaSlotExpires = derived ^. #expiry
-    , txMetaData = meta
+    , txMetaData =
+            case meta of
+                Just (W.MetaBlob b) -> Just b
+                -- TO_DO
+                _ -> Nothing
     }
 
 -- note: TxIn records must already be sorted by order
@@ -1314,7 +1318,7 @@ txHistoryFromEntity ti tip metas ins outs ws =
     mapM mkItem metas
   where
     startTime' = interpretQuery ti . slotToUTCTime
-    mkItem m = mkTxWith (txMetaTxId m) (txMetaData m) (mkTxDerived m)
+    mkItem m = mkTxWith (txMetaTxId m) (W.MetaBlob <$> txMetaData m) (mkTxDerived m)
     mkTxWith txid meta derived = do
         t <- startTime' (derived ^. #slotNo)
         return $ W.TransactionInfo
