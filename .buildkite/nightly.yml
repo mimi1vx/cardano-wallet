@@ -38,7 +38,7 @@ steps:
     timeout_in_minutes: 360
     env:
       HOME: "/cache/cardano-wallet.home"
-      CARDANO_WALLET_INTEGRATION_TEST_REPETITIONS: 7
+      CARDANO_WALLET_INTEGRATION_TEST_REPETITIONS: 14
     agents:
       system: x86_64-linux
 
@@ -47,7 +47,7 @@ steps:
     timeout_in_minutes: 360
     env:
       HOME: "/cache/cardano-wallet.home"
-      HSPEC_OPTIONS: "--qc-max-success=300"
+      HSPEC_OPTIONS: "--qc-max-success=400"
     agents:
       system: x86_64-linux
 
