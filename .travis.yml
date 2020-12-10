@@ -2,7 +2,7 @@
 sudo: false
 
 # Choose a build environment:
-dist: xenial
+dist: focal
 
 # Only clone the repository tip & track all branches
 git:
@@ -34,16 +34,22 @@ jobs:
   fast_finish: true
   include:
   - stage: documentation 📚
-    if: type != pull_request AND (branch = master OR tag =~ ^v)
+    if: type = pull_request
     name: "API Documentation"
     script:
-    - mkdir -p api/edge
-    - cp -Rv specifications/api/* api/edge
-    - git checkout --orphan gh-pages-deploy && git reset
-    - git add api && git commit -m $TRAVIS_COMMIT
-    - git fetch origin
-    - git checkout gh-pages && git merge -X theirs --no-commit --no-ff --allow-unrelated-histories - && git commit --allow-empty --no-edit
-    - git push -f -q https://WilliamKingNoel-Bot:$GITHUB_ACCESS_TOKEN@github.com/input-output-hk/cardano-wallet gh-pages &>/dev/null
+    # - mkdir -p api/edge
+    # - cp -Rv specifications/api/* api/edge
+    # - git checkout --orphan gh-pages-deploy && git reset
+    # - git add api && git commit -m $TRAVIS_COMMIT
+    # - git fetch origin
+    # - git checkout gh-pages && git merge -X theirs --no-commit --no-ff --allow-unrelated-histories - && git commit --allow-empty --no-edit
+    # - git push -f -q https://WilliamKingNoel-Bot:$GITHUB_ACCESS_TOKEN@github.com/input-output-hk/cardano-wallet gh-pages &>/dev/null
+    # TEST upload swagger to bump.sh
+    - gem install bump-cli
+    - sudo snap install yq
+    - yq r -j specifications/api/swagger.yaml > specifications/api/swagger.json
+    - bump validate --doc e40601d6-350d-4f7b-9a06-02477e92b9fc --token b846c40566d17af2372d95be86ba7d52 specifications/api/swagger.json
+    - bump deploy --doc e40601d6-350d-4f7b-9a06-02477e92b9fc --token b846c40566d17af2372d95be86ba7d52 specifications/api/swagger.json
 
   - stage: deploy 🚀
     if: type != pull_request AND (tag =~ ^v OR commit_message =~ /TRAVIS_TRIGGER_RELEASE/)
