@@ -134,6 +134,7 @@ import Cardano.Wallet.Primitive.Types.RewardAccount
     ( RewardAccount (..) )
 import Cardano.Wallet.Primitive.Types.Tx
     ( Direction (..)
+    , Metadata
     , TransactionInfo (..)
     , Tx (..)
     , TxIn (..)
@@ -896,6 +897,9 @@ instance ToExpr TxIn where
     toExpr = genericToExpr
 
 instance ToExpr TxMetadata where
+    toExpr = defaultExprViaShow
+
+instance ToExpr Metadata where
     toExpr = defaultExprViaShow
 
 instance ToExpr Coin where
