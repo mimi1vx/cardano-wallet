@@ -54,7 +54,14 @@ import Cardano.Wallet.Network
     , mapCursor
     )
 import Cardano.Wallet.Primitive.Slotting
-    ( TimeInterpreter, TimeInterpreterLog, mkTimeInterpreter )
+    ( TimeInterpreter
+    , TimeInterpreterLog
+    , interpretQuery
+    , mkTimeInterpreter
+    , neverFails
+    , queryEpochLength
+    , querySlotLength
+    )
 import Cardano.Wallet.Shelley.Compatibility
     ( AnyCardanoEra (..)
     , CardanoEra (..)
@@ -335,7 +342,8 @@ withNetworkLayer tr np addrInfo (versionData, _) action = do
             , initCursor = _initCursor
             , destroyCursor = _destroyCursor
             , cursorSlotNo = _cursorSlotNo
-            , getProtocolParameters = atomically $ readTVar protocolParamsVar
+            , currentProtocolParameters = atomically $ readTVar protocolParamsVar
+            , currentSlottingParameters = _currentSlottingParameters
             , postTx = _postTx localTxSubmissionQ nodeEraVar
             , stakeDistribution = _stakeDistribution queryRewardQ nodeEraVar
             , getAccountBalance = \k -> liftIO $ do
@@ -438,6 +446,28 @@ withNetworkLayer tr np addrInfo (versionData, _) action = do
 
     _currentNodeEra nodeEraVar =
         atomically (readTVar nodeEraVar)
+
+    -- | Use the HFC history interpreter to get the slot and epoch lengths current
+    -- for the network tip.
+    --
+    -- This may throw a 'PastHorizonException' in some cases.
+    _currentSlottingParameters nodeTipVar = do
+        tip <- slotNo <$> _currentNodeTip nodeTipVar
+
+        -- FIXME: ADP-609
+        --
+        -- Query activeSlotCoeff from ledger & securityParam from the ledger
+        let getActiveSlotCoeff = pure (W.ActiveSlotCoefficient 1.0)
+        let getK = pure (Quantity 2160)
+
+        let ti :: TimeInterpreter IO
+            ti =  neverFails "tip in getSlottingParametersForTip can't be more than\
+                    \ the timeInterpreter tip, and thus never outside the safe-zone"
+                    (timeInterpreter nl)
+        (slotLen, epLen) <- interpretQuery ti
+            ((,) <$> querySlotLength tip <*> queryEpochLength tip)
+
+        SlottingParameters slotLen epLen <$> getActiveSlotCoeff <*> getK
 
     -- NOTE1: only shelley transactions can be submitted like this, because they
     -- are deserialised as shelley transactions before submitting.
@@ -737,6 +767,18 @@ mkTipSyncClient tr np localTxSubmissionQ onTipUpdate onPParamsUpdate onInterpret
                         CmdQueryLocalState pt (QueryAnytimeShelley GetEraStart)
                     ________________________ ->
                         CmdQueryLocalState pt (QueryAnytimeAllegra GetEraStart)
+                )
+
+            gp <- timeQryAndLog "GetGenesisParams" tr $ localStateQueryQ `send`
+                (case era of
+                    AnyCardanoEra ByronEra ->
+                        pure (W.genesisParameters np)
+
+                    AnyCardanoEra ShelleyEra ->
+                        CmdQueryLocalState pt (QueryAnytimeShelley GetGenesisConfig)
+
+                    AnyCardanoEra _ ->
+                        undefined
                 )
 
             case era of
