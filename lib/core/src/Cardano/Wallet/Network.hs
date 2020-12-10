@@ -71,15 +71,8 @@ import Cardano.Wallet.Primitive.Types.Tx
     ( SealedTx )
 import Control.Concurrent
     ( threadDelay )
-import Control.Concurrent.Async
-    ( AsyncCancelled (..) )
 import Control.Exception
-    ( AsyncException (..)
-    , Exception (..)
-    , SomeException
-    , asyncExceptionFromException
-    , handle
-    )
+    ( AsyncException (..), asyncExceptionFromException )
 import Control.Monad
     ( when )
 import Control.Monad.Trans.Except
@@ -105,7 +98,7 @@ import Fmt
 import GHC.Generics
     ( Generic )
 import UnliftIO.Exception
-    ( throwIO )
+    ( Exception (..), SomeException, handle, throwIO )
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
@@ -405,8 +398,6 @@ follow nl tr cps yield header =
             Just ThreadKilled -> do
                 destroyCursor nl cursor $> FollowInterrupted
             Just UserInterrupt -> do
-                destroyCursor nl cursor $> FollowInterrupted
-            Nothing | fromException e == Just AsyncCancelled -> do
                 destroyCursor nl cursor $> FollowInterrupted
             Just _ -> do
                 traceWith tr $ MsgUnhandledException eT

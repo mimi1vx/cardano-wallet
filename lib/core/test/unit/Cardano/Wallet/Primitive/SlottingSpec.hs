@@ -55,8 +55,6 @@ import Cardano.Wallet.Primitive.Types
     )
 import Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..) )
-import Control.Exception
-    ( try )
 import Control.Monad.Trans.Except
     ( runExceptT )
 import Data.Either
@@ -89,6 +87,8 @@ import Test.Utils.Time
     ( genUniformTime )
 import Test.Utils.Trace
     ( captureLogging )
+import UnliftIO.Exception
+    ( try )
 
 import qualified Cardano.Slotting.Slot as Cardano
 import qualified Ouroboros.Consensus.HardFork.History.EraParams as HF
@@ -163,7 +163,7 @@ spec = do
                     let ti = neverFails "because" $
                             mkTimeInterpreter tr startTime $
                             pure forkInterpreter
-                    try @PastHorizonException $ interpretQuery ti failingQry
+                    try @IO @PastHorizonException $ interpretQuery ti failingQry
 
                 res `shouldSatisfy` isLeft
                 logs `shouldSatisfy` (\case
@@ -176,7 +176,7 @@ spec = do
                     let ti = unsafeExtendSafeZone $
                             mkTimeInterpreter tr startTime $
                             pure forkInterpreter
-                    try @PastHorizonException $ interpretQuery ti failingQry
+                    try @IO @PastHorizonException $ interpretQuery ti failingQry
 
                 res `shouldSatisfy` isRight
                 logs `shouldBe` []
@@ -186,7 +186,7 @@ spec = do
                     let ti = expectAndThrowFailures $
                             mkTimeInterpreter tr startTime $
                             pure forkInterpreter
-                    try @PastHorizonException $ interpretQuery ti failingQry
+                    try @IO @PastHorizonException $ interpretQuery ti failingQry
 
                 res `shouldSatisfy` isLeft
                 logs `shouldSatisfy` (\case

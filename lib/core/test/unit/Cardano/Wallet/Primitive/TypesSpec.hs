@@ -122,8 +122,6 @@ import Cardano.Wallet.Primitive.Types.UTxO
     )
 import Cardano.Wallet.Unsafe
     ( someDummyMnemonic )
-import Control.Exception
-    ( evaluate )
 import Control.Monad
     ( forM_, replicateM )
 import Crypto.Hash
@@ -204,6 +202,8 @@ import Test.Text.Roundtrip
     ( textRoundtrip )
 import Test.Utils.Time
     ( genUniformTime, genUniformTimeWithinRange, getUniformTime )
+import UnliftIO.Exception
+    ( evaluate )
 
 import qualified Data.ByteString as BS
 import qualified Data.Map

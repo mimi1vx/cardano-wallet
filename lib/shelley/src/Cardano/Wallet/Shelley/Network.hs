@@ -79,16 +79,10 @@ import Control.Applicative
     ( liftA3 )
 import Control.Concurrent
     ( ThreadId )
-import Control.Concurrent.Async
-    ( Async, async, asyncThreadId, cancel, link )
 import Control.Concurrent.Chan
     ( Chan, dupChan, newChan, readChan, writeChan )
-import Control.Exception
-    ( IOException )
 import Control.Monad
     ( forever, unless, void, when, (>=>) )
-import Control.Monad.Catch
-    ( Handler (..) )
 import Control.Monad.Class.MonadAsync
     ( MonadAsync )
 import Control.Monad.Class.MonadST
@@ -246,6 +240,10 @@ import Ouroboros.Network.Protocol.LocalTxSubmission.Type
     ( LocalTxSubmission, SubmitResult (..) )
 import System.IO.Error
     ( isDoesNotExistError )
+import UnliftIO.Async
+    ( Async, async, asyncThreadId, cancel, link )
+import UnliftIO.Exception
+    ( Handler (..), IOException )
 
 import qualified Cardano.Wallet.Primitive.Types as W
 import qualified Cardano.Wallet.Primitive.Types.Coin as W
@@ -253,6 +251,7 @@ import qualified Cardano.Wallet.Primitive.Types.Hash as W
 import qualified Cardano.Wallet.Primitive.Types.RewardAccount as W
 import qualified Cardano.Wallet.Primitive.Types.Tx as W
 import qualified Codec.CBOR.Term as CBOR
+import qualified Control.Monad.Catch as E
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -1073,7 +1072,7 @@ connectClient tr handlers client vData addr = withIOManager $ \iocp -> do
             , nctHandshakeTracer = contramap MsgHandshakeTracer tr
             }
     let socket = localSnocket iocp addr
-    recovering policy handlers $ \status -> do
+    recovering policy (coerceHandlers handlers) $ \status -> do
         traceWith tr $ MsgCouldntConnect (rsIterNumber status)
         connectTo socket tracers versions addr
   where
@@ -1083,6 +1082,12 @@ connectClient tr handlers client vData addr = withIOManager $ \iocp -> do
 
 -- | Shorthand for the list of exception handlers used with 'recovering'.
 type RetryHandlers = [RetryStatus -> Handler IO Bool]
+
+coerceHandlers :: [RetryStatus -> Handler IO Bool] -> [RetryStatus -> E.Handler IO Bool]
+coerceHandlers = map (\f s -> coerceHandler (f s))
+
+coerceHandler :: Handler IO Bool -> E.Handler IO Bool
+coerceHandler (Handler h) = E.Handler h
 
 -- | Handlers that are retrying on every connection lost.
 retryOnConnectionLost :: Tracer IO NetworkLayerLog -> RetryHandlers

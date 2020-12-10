@@ -31,7 +31,6 @@ library
     ghc-options: -O2 -Werror
   build-depends:
       aeson
-    , async
     , base
     , bech32
     , bech32-th
@@ -84,7 +83,6 @@ library
     , random-shuffle
     , retry
     , safe
-    , safe-exceptions
     , scientific
     , scrypt
     , servant
@@ -103,6 +101,7 @@ library
     , transformers
     , typed-protocols
     , unliftio
+    , unliftio-core
     , unordered-containers
     , vector
     , wai
@@ -202,7 +201,6 @@ test-suite unit
       base
     , aeson
     , aeson-qq
-    , async
     , bytestring
     , cardano-addresses
     , cardano-api
@@ -259,6 +257,7 @@ test-suite unit
     , time
     , transformers
     , tree-diff
+    , unliftio
     , unordered-containers
     , x509
     , x509-store
@@ -360,6 +359,7 @@ benchmark db
     , text
     , time
     , transformers
+    , unliftio
   type:
      exitcode-stdio-1.0
   hs-source-dirs:

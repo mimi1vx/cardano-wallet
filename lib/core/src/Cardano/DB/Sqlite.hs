@@ -54,12 +54,12 @@ import Cardano.Wallet.Logging
     ( BracketLog, bracketTracer )
 import Control.Concurrent.MVar
     ( newMVar, withMVarMasked )
-import Control.Exception
-    ( Exception, bracket_, tryJust )
 import Control.Monad
     ( join, mapM_, when )
 import Control.Monad.Catch
-    ( Handler (..), MonadCatch (..), handleIf, handleJust )
+    ( Handler (..) )
+import Control.Monad.IO.Unlift
+    ( MonadUnliftIO (..) )
 import Control.Monad.Logger
     ( LogLevel (..) )
 import Control.Retry
@@ -107,6 +107,8 @@ import GHC.Generics
     ( Generic )
 import System.Log.FastLogger
     ( fromLogStr )
+import UnliftIO.Exception
+    ( Exception, bracket_, handle, handleJust, throwIO, tryJust )
 
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Char8 as B8
@@ -160,7 +162,7 @@ queryLogFunc tr _loc _source level str = traceWith tr (MsgQuery msg sev)
 
 -- | Run an action, and convert any Sqlite constraints exception into the given
 -- error result. No other exceptions are handled.
-handleConstraint :: MonadCatch m => e -> m a -> m (Either e a)
+handleConstraint :: MonadUnliftIO m => e -> m a -> m (Either e a)
 handleConstraint e = handleJust select handler . fmap Right
   where
       select (SqliteException ErrorConstraint _ _) = Just ()
@@ -201,6 +203,14 @@ destroyDBLayer (SqliteContext {getSqlBackend, trace, dbFile}) = do
     isBusy (SqliteException name _ _) = pure (name == Sqlite.ErrorBusy)
     pol = limitRetriesByCumulativeDelay (60000*ms) $ constantDelay (25*ms)
     ms = 1000 -- microseconds in a millisecond
+
+handleIf
+    :: (MonadUnliftIO m, Exception e)
+    => (e -> Bool)
+    -> (e -> m a)
+    -> m a
+    -> m a
+handleIf f h = handle (\e -> if f e then h e else throwIO e)
 
 {-------------------------------------------------------------------------------
                            Internal / Database Setup

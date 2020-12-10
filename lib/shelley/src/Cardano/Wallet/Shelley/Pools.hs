@@ -114,13 +114,7 @@ import Cardano.Wallet.Unsafe
 import Control.Concurrent
     ( forkFinally, threadDelay )
 import Control.Exception
-    ( AsyncException (..)
-    , SomeException (..)
-    , asyncExceptionFromException
-    , bracket
-    , finally
-    , mask_
-    )
+    ( AsyncException (..), asyncExceptionFromException )
 import Control.Monad
     ( forM, forM_, forever, void, when )
 import Control.Monad.IO.Class
@@ -175,6 +169,8 @@ import Ouroboros.Consensus.Cardano.Block
     ( CardanoBlock, HardForkBlock (..) )
 import System.Random
     ( RandomGen, random )
+import UnliftIO.Exception
+    ( SomeException (..), bracket, finally, mask_ )
 
 import qualified Cardano.Wallet.Api.Types as Api
 import qualified Data.List as L

@@ -269,10 +269,6 @@ import Control.Arrow
     ( second )
 import Control.Concurrent
     ( threadDelay )
-import Control.Concurrent.Async
-    ( async, race, wait )
-import Control.Exception
-    ( Exception (..), SomeException (..), throwIO )
 import Control.Monad
     ( forM_, join, unless, void )
 import Control.Monad.Catch
@@ -367,6 +363,10 @@ import Test.Integration.Framework.Request
     , request
     , unsafeRequest
     )
+import UnliftIO.Async
+    ( async, race, wait )
+import UnliftIO.Exception
+    ( Exception (..), SomeException (..), throwIO )
 import Web.HttpApiData
     ( ToHttpApiData (..) )
 

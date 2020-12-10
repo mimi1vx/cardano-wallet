@@ -29,10 +29,6 @@ import Options.Applicative
 import Turtle hiding
     ( arg, match, opt, option, skip )
 
-import Control.Concurrent.Async
-    ( race )
-import Control.Exception
-    ( IOException )
 import Control.Monad
     ( filterM, forM_ )
 import Control.Monad.Catch
@@ -53,6 +49,10 @@ import Safe
     ( headMay, readMay )
 import System.Exit
     ( exitWith )
+import UnliftIO.Async
+    ( race )
+import UnliftIO.Exception
+    ( IOException )
 
 import qualified Control.Foldl as Fold
 import qualified Data.Text as T

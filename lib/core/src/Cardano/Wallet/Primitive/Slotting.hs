@@ -77,8 +77,6 @@ import Cardano.Wallet.Primitive.Types
     , SlottingParameters (..)
     , StartTime (..)
     )
-import Control.Exception
-    ( throwIO )
 import Control.Monad
     ( join, (>=>) )
 import Control.Monad.IO.Class
@@ -123,6 +121,8 @@ import Ouroboros.Consensus.HardFork.History.Qry
     )
 import Ouroboros.Consensus.HardFork.History.Summary
     ( neverForksSummary )
+import UnliftIO.Exception
+    ( throwIO )
 
 import qualified Cardano.Slotting.Slot as Cardano
 import qualified Data.Text as T
