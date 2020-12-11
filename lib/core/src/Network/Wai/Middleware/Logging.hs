@@ -9,6 +9,8 @@
 -- The deprecation is about not using the function to get the requestBody from
 -- a request since it only returns chunks, but we do use it
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
+-- NFData instances
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Network.Wai.Middleware.Logging
     ( -- * Middleware
@@ -39,6 +41,8 @@ import Control.Arrow
     ( second )
 import Control.Concurrent.MVar
     ( MVar, modifyMVar, newMVar )
+import Control.DeepSeq
+    ( NFData (..) )
 import Control.Tracer
     ( Tracer, contramap, traceWith )
 import Data.Aeson
@@ -120,7 +124,7 @@ data ApiLoggerSettings = ApiLoggerSettings
 
 -- | Just a wrapper for readability
 newtype RequestId = RequestId Integer
-    deriving (Generic, Show, Eq, ToJSON)
+    deriving (Generic, Show, Eq, ToJSON, NFData)
 
 -- | Create a new opaque 'ApiLoggerSettings'
 newApiLoggerSettings :: IO ApiLoggerSettings
@@ -219,7 +223,7 @@ data ApiLog = ApiLog
     -- ^ Unique integer associated with the request, for the purpose of tracing.
     , logMsg :: HandlerLog
     -- ^ Event trace for the handler.
-    } deriving (Generic, Show, ToJSON)
+    } deriving (Generic, Show, ToJSON, NFData)
 
 instance HasPrivacyAnnotation ApiLog where
     getPrivacyAnnotation (ApiLog _ msg) = getPrivacyAnnotation msg
@@ -246,7 +250,13 @@ data HandlerLog
     | LogResponse NominalDiffTime (Maybe Status)
     | LogResponseBody ByteString
     | LogRequestFinish
-    deriving (Generic, Show)
+    deriving (Generic, Show, NFData)
+
+instance NFData Request where
+    rnf a = rnf (show a)
+
+instance NFData Status where
+    rnf (Status c m) = rnf c `seq` rnf m
 
 instance ToText HandlerLog where
     toText msg = case msg of

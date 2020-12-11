@@ -27,6 +27,8 @@ import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, readMVar )
 import Control.Concurrent.STM.TVar
     ( TVar, newTVarIO, readTVarIO, writeTVar )
+import Control.DeepSeq
+    ( force )
 import Control.Exception
     ( evaluate )
 import Control.Monad
@@ -288,7 +290,7 @@ data Context = Context
 
 takeLogs :: Context -> IO [ApiLog]
 takeLogs ctx = do
-    entries <- evaluate =<< readTVarIO (logs ctx)
+    entries <- evaluate . force =<< readTVarIO (logs ctx)
     clearLogs ctx
     pure $ reverse entries
 
